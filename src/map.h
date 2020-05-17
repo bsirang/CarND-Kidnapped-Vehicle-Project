@@ -11,7 +11,7 @@
 #include <vector>
 
 class Map {
- public:  
+ public:
   struct single_landmark_s {
     int id_i ; // Landmark ID
     float x_f; // Landmark x-position in the map (global coordinates)
