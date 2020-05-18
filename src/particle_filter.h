@@ -11,6 +11,8 @@
 
 #include <string>
 #include <vector>
+#include <random>
+
 #include "helper_functions.h"
 
 struct Particle {
@@ -58,15 +60,6 @@ class ParticleFilter {
                   double yaw_rate);
 
   /**
-   * dataAssociation Finds which observations correspond to which landmarks
-   *   (likely by using a nearest-neighbors data association).
-   * @param predicted Vector of predicted landmark observations
-   * @param observations Vector of landmark observations
-   */
-  void dataAssociation(const std::vector<LandmarkObs>& predicted,
-                       std::vector<LandmarkObs>& observations);
-
-  /**
    * updateWeights Updates the weights for each particle based on the likelihood
    *   of the observed measurements.
    * @param sensor_range Range [m] of sensor
@@ -108,24 +101,31 @@ class ParticleFilter {
   std::string getAssociations(Particle best);
   std::string getSenseCoord(Particle best, std::string coord);
 
+  double predictXAxis(double x0, double theta0, double velocity, double yaw_rate, double delta_t, double std);
+  double predictYAxis(double y0, double theta0, double velocity, double yaw_rate, double delta_t, double std);
+  double predictTheta(double theta0, double yaw_rate, double delta_t, double std);
+  static LandmarkObs transformObservation(const Particle & particle, const LandmarkObs & observation);
+  static double gaussian2D(double x1, double y1, double x2, double y2, double sigmax, double sigmay);
+
   // Set of current particles
   std::vector<Particle> particles;
 
  private:
 
-  static double predictSingleAxis(double pos0, double theta0, double velocity, double yaw_rate, double delta_t, double std);
-  static double predictTheta(double theta0, double yaw_rate, double delta_t, double std);
-  static LandmarkObs transformObservation(const Particle & particle, const LandmarkObs & observation);
-  static double gaussian2D(double x1, double y1, double x2, double y2, double sigmax, double sigmay);
+  void printStatistics() const;
 
   // Number of particles to draw
   static constexpr unsigned kNumParticles = 1000;
+
+  static constexpr bool debug = false;
 
   // Flag, if filter is initialized
   bool is_initialized;
 
   // Vector of weights of all particles
   std::vector<double> weights;
+
+  std::default_random_engine generator;
 };
 
 #endif  // PARTICLE_FILTER_H_
