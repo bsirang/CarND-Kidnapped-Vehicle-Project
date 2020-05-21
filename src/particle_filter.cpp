@@ -58,26 +58,37 @@ void ParticleFilter::prediction(double delta_t, double std_pos[],
 void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
                                    const vector<LandmarkObs> &observations,
                                    const Map &map_landmarks) {
-
-   double weightSum = 0.0;
+   double weight_sum = 0.0;
+   vector<LandmarkObs> predicted;
    if (debug) std::cout << "Update Weights" << std::endl;
+
+   // We only generate the predicted list once for all particles
+   // under the assumption that the particles are close enough together
+   auto & p = particles[0];
+   unsigned count = 0;
+   for (const auto & map_landmark : map_landmarks.landmark_list) {
+     auto x_delta = ::fabs(p.x - map_landmark.x_f);
+     auto y_delta = ::fabs(p.y - map_landmark.y_f);
+     count = 0;
+     if (x_delta <= sensor_range && y_delta <= sensor_range) {
+       predicted.push_back(LandmarkObs(map_landmark));
+       if (++count == kLandmarkLimit) {
+          break;
+       }
+     }
+   }
+
    for (auto & p : particles) {
-     std::vector<int> associations;
-     std::vector<double> sense_x;
-     std::vector<double> sense_y;
+     // std::vector<int> associations;
+     // std::vector<double> sense_x;
+     // std::vector<double> sense_y;
 
      std::vector<LandmarkObs> obsTransformed;
      for (const auto & observation : observations) {
        // For each observation, let's trasnform from vehicle to map coordinate frame
        obsTransformed.push_back(transformObservation(p, observation));
-     }
-
-     vector<LandmarkObs> predicted;
-     for (const auto & map_landmark : map_landmarks.landmark_list) {
-       auto x_delta = ::fabs(p.x - map_landmark.x_f);
-       auto y_delta = ::fabs(p.y - map_landmark.y_f);
-       if (x_delta <= sensor_range && y_delta <= sensor_range) {
-         predicted.push_back(LandmarkObs(map_landmark));
+       if (++count == kObservationLimit) {
+         break;
        }
      }
 
@@ -97,9 +108,9 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 
        // Used for debugging
        if (closest != nullptr) {
-         associations.push_back(closest->id);
-         sense_x.push_back(observation.x);
-         sense_y.push_back(observation.y);
+         // associations.push_back(closest->id);
+         // sense_x.push_back(observation.x);
+         // sense_y.push_back(observation.y);
 
          // Now that we know which landmark is closest to each observation, let's multiply
          // all of the probabilities together to get our final probability
@@ -112,17 +123,17 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
        std::cout << "No observations!" << std::endl;
      }
      p.weight = prob;
-     weightSum += p.weight;
-     SetAssociations(p, associations, sense_x, sense_y);
+     weight_sum += p.weight;
+     // SetAssociations(p, associations, sense_x, sense_y);
    }
 
-   if (debug) std::cout << "weightSum = " << weightSum << std::endl;
+   if (debug) std::cout << "weight_sum = " << weight_sum << std::endl;
    // printStatistics();
 
    // Normalize the weights
-   if (weightSum != 0.0) {
+   if (weight_sum != 0.0) {
      for (auto & p : particles) {
-       p.weight = p.weight / weightSum;
+       p.weight = p.weight / weight_sum;
        if (debug) std::cout << p << std::endl;
      }
    } else {
@@ -153,7 +164,6 @@ void ParticleFilter::resample() {
      resampled.push_back(particles[index]);
    }
    particles = resampled;
-
 }
 
 void ParticleFilter::SetAssociations(Particle& particle,
