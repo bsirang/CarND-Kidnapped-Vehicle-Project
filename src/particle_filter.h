@@ -113,11 +113,10 @@ class ParticleFilter {
  private:
 
   void printStatistics() const;
+  void printParticles() const;
 
   // Number of particles to draw
-  static constexpr unsigned kNumParticles = 20;
-  static constexpr unsigned kLandmarkLimit = 3;
-  static constexpr unsigned kObservationLimit = 3;
+  static constexpr unsigned kNumParticles = 40;
 
   // Flag, if filter is initialized
   bool is_initialized;

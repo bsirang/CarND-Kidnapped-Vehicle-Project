@@ -56,35 +56,23 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
                                    const Map &map_landmarks) {
    double weight_sum = 0.0;
    vector<LandmarkObs> predicted;
-
-   // We only generate the predicted list once for all particles
-   // under the assumption that the particles are close enough together
-   auto & p = particles[0];
-   unsigned count = 0;
-   for (const auto & map_landmark : map_landmarks.landmark_list) {
-     auto x_delta = ::fabs(p.x - map_landmark.x_f);
-     auto y_delta = ::fabs(p.y - map_landmark.y_f);
-     count = 0;
-     if (x_delta <= sensor_range && y_delta <= sensor_range) {
-       predicted.push_back(LandmarkObs(map_landmark));
-       if (++count == kLandmarkLimit) {
-          break;
-       }
-     }
-   }
-
    for (auto & p : particles) {
      // std::vector<int> associations;
      // std::vector<double> sense_x;
      // std::vector<double> sense_y;
 
+     for (const auto & map_landmark : map_landmarks.landmark_list) {
+       auto x_delta = ::fabs(p.x - map_landmark.x_f);
+       auto y_delta = ::fabs(p.y - map_landmark.y_f);
+       if (x_delta <= sensor_range && y_delta <= sensor_range) {
+         predicted.push_back(LandmarkObs(map_landmark));
+       }
+     }
+
      std::vector<LandmarkObs> obsTransformed;
      for (const auto & observation : observations) {
        // For each observation, let's trasnform from vehicle to map coordinate frame
        obsTransformed.push_back(transformObservation(p, observation));
-       if (++count == kObservationLimit) {
-         break;
-       }
      }
 
      double prob = 1.0;
@@ -113,9 +101,9 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
        }
      }
      // If we had no observations, clear our prob estimate
-     if (obsTransformed.size() == 0) {
-       prob = 0.0;
-       std::cout << "No observations!" << std::endl;
+     if (obsTransformed.size() == 0 || predicted.size() == 0) {
+       prob = p.weight;
+       std::cout << "No observations or predictions!" << std::endl;
      }
      p.weight = prob;
      weight_sum += p.weight;
@@ -131,6 +119,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
      }
    } else {
      std::cout << "Weights sum to zero!" << std::endl;
+     printParticles();
    }
 }
 
@@ -249,4 +238,10 @@ void ParticleFilter::printStatistics() const {
     ++count;
   }
   std::cout << iteration++ << " min = " << min << " max = " << max << " average = " << accum / count << std::endl;
+}
+
+void ParticleFilter::printParticles() const {
+  for (const auto & p : particles) {
+    std::cout << p << std::endl;
+  }
 }
