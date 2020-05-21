@@ -29,7 +29,6 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
   std::normal_distribution<double> y_dist(y, std[1]);
   std::normal_distribution<double> theta_dist(theta, std[2]);
 
-  if (debug) std::cout << "Initialization" << std::endl;
   for (unsigned i = 0; i < kNumParticles; ++i) {
     Particle p;
     p.id = i;
@@ -37,21 +36,18 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
     p.y = y_dist(generator);
     p.theta = theta_dist(generator);
     p.weight = 1.0;
-    if (debug) std::cout << p << std::endl;
     particles.push_back(p);
   }
+  std::cout << "Initialized " << kNumParticles << " particles" << std::endl;
   is_initialized = true;
 }
 
 void ParticleFilter::prediction(double delta_t, double std_pos[],
                                 double velocity, double yaw_rate) {
-   if (debug) std::cout << "Prediction with vel" << velocity << " and yaw_rate " << yaw_rate << std::endl;
    for (auto & p : particles) {
-     Particle old = p;
      p.x = predictXAxis(p.x, p.theta, velocity, yaw_rate, delta_t, std_pos[0]);
      p.y = predictYAxis(p.y, p.theta, velocity, yaw_rate, delta_t, std_pos[1]);
      p.theta = predictTheta(p.theta, yaw_rate, delta_t, std_pos[2]);
-     if (debug) std::cout << old << " => " << p << std::endl;
    }
 }
 
@@ -60,7 +56,6 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
                                    const Map &map_landmarks) {
    double weight_sum = 0.0;
    vector<LandmarkObs> predicted;
-   if (debug) std::cout << "Update Weights" << std::endl;
 
    // We only generate the predicted list once for all particles
    // under the assumption that the particles are close enough together
@@ -127,14 +122,12 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
      // SetAssociations(p, associations, sense_x, sense_y);
    }
 
-   if (debug) std::cout << "weight_sum = " << weight_sum << std::endl;
    // printStatistics();
 
    // Normalize the weights
    if (weight_sum != 0.0) {
      for (auto & p : particles) {
        p.weight = p.weight / weight_sum;
-       if (debug) std::cout << p << std::endl;
      }
    } else {
      std::cout << "Weights sum to zero!" << std::endl;
@@ -205,7 +198,7 @@ string ParticleFilter::getSenseCoord(Particle best, string coord) {
   return s;
 }
 
-double ParticleFilter::predictXAxis(double x0, double theta0, double velocity, double yaw_rate, double delta_t, double std) {
+inline double ParticleFilter::predictXAxis(double x0, double theta0, double velocity, double yaw_rate, double delta_t, double std) {
   if (yaw_rate == 0.0) {
     yaw_rate = 1.0e-10; //avoid divide by zero
   }
@@ -213,7 +206,7 @@ double ParticleFilter::predictXAxis(double x0, double theta0, double velocity, d
   return std::normal_distribution<double>(x, std)(generator);
 }
 
-double ParticleFilter::predictYAxis(double y0, double theta0, double velocity, double yaw_rate, double delta_t, double std) {
+inline double ParticleFilter::predictYAxis(double y0, double theta0, double velocity, double yaw_rate, double delta_t, double std) {
   if (yaw_rate == 0.0) {
     yaw_rate = 1.0e-10; //avoid divide by zero
   }
@@ -221,12 +214,12 @@ double ParticleFilter::predictYAxis(double y0, double theta0, double velocity, d
   return std::normal_distribution<double>(y, std)(generator);
 }
 
-double ParticleFilter::predictTheta(double theta0, double yaw_rate, double delta_t, double std) {
+inline double ParticleFilter::predictTheta(double theta0, double yaw_rate, double delta_t, double std) {
   double theta = theta0 + yaw_rate * delta_t;
   return std::normal_distribution<double>(theta, std)(generator);
 }
 
-LandmarkObs ParticleFilter::transformObservation(const Particle & particle, const LandmarkObs & observation) {
+inline LandmarkObs ParticleFilter::transformObservation(const Particle & particle, const LandmarkObs & observation) {
   LandmarkObs result;
   result.id = observation.id;
   result.x = particle.x + (::cos(particle.theta) * observation.x) - (sin(particle.theta) * observation.y);
@@ -234,7 +227,7 @@ LandmarkObs ParticleFilter::transformObservation(const Particle & particle, cons
   return result;
 }
 
-double ParticleFilter::gaussian2D(double x1, double y1, double x2, double y2, double sigmax, double sigmay) {
+inline double ParticleFilter::gaussian2D(double x1, double y1, double x2, double y2, double sigmax, double sigmay) {
   double exponent = ::pow(x1 - x2, 2) / (2 * ::pow(sigmax, 2)) + ::pow(y1 - y2, 2) / (2 * pow(sigmay, 2));
   return (1.0 / (2 * M_PI * sigmax * sigmay)) * ::exp(-exponent);
 }
