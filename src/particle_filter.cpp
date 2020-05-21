@@ -106,6 +106,11 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
          prob *= gaussian2D(observation.x, observation.y, closest->x, closest->y, std_landmark[0], std_landmark[1]);
        }
      }
+     // If we had no observations, clear our prob estimate
+     if (obsTransformed.size() == 0) {
+       prob = 0.0;
+       std::cout << "No observations!" << std::endl;
+     }
      p.weight = prob;
      weightSum += p.weight;
      SetAssociations(p, associations, sense_x, sense_y);
@@ -120,6 +125,8 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
        p.weight = p.weight / weightSum;
        if (debug) std::cout << p << std::endl;
      }
+   } else {
+     std::cout << "Weights sum to zero!" << std::endl;
    }
 }
 
@@ -189,13 +196,17 @@ string ParticleFilter::getSenseCoord(Particle best, string coord) {
 }
 
 double ParticleFilter::predictXAxis(double x0, double theta0, double velocity, double yaw_rate, double delta_t, double std) {
-
+  if (yaw_rate == 0.0) {
+    yaw_rate = 1.0e-10; //avoid divide by zero
+  }
   double x = x0 + (velocity / yaw_rate) * (::sin(theta0 + yaw_rate * delta_t) - ::sin(theta0));
   return std::normal_distribution<double>(x, std)(generator);
 }
 
 double ParticleFilter::predictYAxis(double y0, double theta0, double velocity, double yaw_rate, double delta_t, double std) {
-
+  if (yaw_rate == 0.0) {
+    yaw_rate = 1.0e-10; //avoid divide by zero
+  }
   double y = y0 + (velocity / yaw_rate) * (::cos(theta0) - ::cos(theta0 + yaw_rate * delta_t));
   return std::normal_distribution<double>(y, std)(generator);
 }
@@ -222,6 +233,7 @@ void ParticleFilter::printStatistics() const {
   double min = std::numeric_limits<double>::max();
   double max = std::numeric_limits<double>::min();
   double accum = 0.0;
+  static unsigned iteration = 0;
   unsigned count = 0;
   for (const auto & p : particles) {
     if (p.weight < min) {
@@ -233,5 +245,5 @@ void ParticleFilter::printStatistics() const {
     accum += p.weight;
     ++count;
   }
-  std::cout << "min = " << min << " max = " << max << " average = " << accum / count << std::endl;
+  std::cout << iteration++ << " min = " << min << " max = " << max << " average = " << accum / count << std::endl;
 }
