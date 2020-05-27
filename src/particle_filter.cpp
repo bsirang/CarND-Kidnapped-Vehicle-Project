@@ -17,6 +17,9 @@
 
 #include "helper_functions.h"
 
+// Uncomment to track observations for the particles
+//#define TRACK_ASSOCIATIONS
+
 using std::string;
 using std::vector;
 
@@ -57,9 +60,12 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
    double weight_sum = 0.0;
    vector<LandmarkObs> predicted;
    for (auto & p : particles) {
-     // std::vector<int> associations;
-     // std::vector<double> sense_x;
-     // std::vector<double> sense_y;
+
+#ifdef TRACK_ASSOCIATIONS
+     std::vector<int> associations;
+     std::vector<double> sense_x;
+     std::vector<double> sense_y;
+#endif
 
      for (const auto & map_landmark : map_landmarks.landmark_list) {
        auto x_delta = ::fabs(p.x - map_landmark.x_f);
@@ -91,9 +97,11 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 
        // Used for debugging
        if (closest != nullptr) {
-         // associations.push_back(closest->id);
-         // sense_x.push_back(observation.x);
-         // sense_y.push_back(observation.y);
+#ifdef TRACK_ASSOCIATIONS
+         associations.push_back(closest->id);
+         sense_x.push_back(observation.x);
+         sense_y.push_back(observation.y);
+#endif
 
          // Now that we know which landmark is closest to each observation, let's multiply
          // all of the probabilities together to get our final probability
@@ -107,7 +115,10 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
      }
      p.weight = prob;
      weight_sum += p.weight;
-     // SetAssociations(p, associations, sense_x, sense_y);
+#ifdef TRACK_ASSOCIATIONS
+     SetAssociations(p, associations, sense_x, sense_y);
+#endif
+
    }
 
    // printStatistics();
@@ -118,8 +129,10 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
        p.weight = p.weight / weight_sum;
      }
    } else {
-     std::cout << "Weights sum to zero!" << std::endl;
-     printParticles();
+     std::cout << "Weights sum to zero! Resetting weights..." << std::endl;
+     for (auto & p : particles) {
+       p.weight = 1.0;
+     }
    }
 }
 

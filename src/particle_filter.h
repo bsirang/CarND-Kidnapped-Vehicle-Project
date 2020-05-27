@@ -116,13 +116,10 @@ class ParticleFilter {
   void printParticles() const;
 
   // Number of particles to draw
-  static constexpr unsigned kNumParticles = 40;
+  static constexpr unsigned kNumParticles = 100;
 
   // Flag, if filter is initialized
   bool is_initialized;
-
-  // Vector of weights of all particles
-  std::vector<double> weights;
 
   std::default_random_engine generator;
 };
