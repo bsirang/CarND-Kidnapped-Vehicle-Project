@@ -138,7 +138,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 
 void ParticleFilter::resample() {
    double pdfmax = 0.0;
-   double beta = 1.0;
+   double beta = 0.0;
    for (auto & p : particles) {
      if (p.weight > pdfmax) {
        pdfmax = p.weight;
