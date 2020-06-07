@@ -58,15 +58,11 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
                                    const vector<LandmarkObs> &observations,
                                    const Map &map_landmarks) {
    double weight_sum = 0.0;
-   vector<LandmarkObs> predicted;
+
    for (auto & p : particles) {
-
-#ifdef TRACK_ASSOCIATIONS
-     std::vector<int> associations;
-     std::vector<double> sense_x;
-     std::vector<double> sense_y;
-#endif
-
+     // For each particle, generate our predicted obervations by finding map
+     // landmarks that are within sensor range for this particular hypothesis (particle)
+     vector<LandmarkObs> predicted;
      for (const auto & map_landmark : map_landmarks.landmark_list) {
        auto x_delta = ::fabs(p.x - map_landmark.x_f);
        auto y_delta = ::fabs(p.y - map_landmark.y_f);
@@ -75,65 +71,43 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
        }
      }
 
-     std::vector<LandmarkObs> obsTransformed;
-     for (const auto & observation : observations) {
-       // For each observation, let's trasnform from vehicle to map coordinate frame
-       obsTransformed.push_back(transformObservation(p, observation));
-     }
-
-     double prob = 1.0;
-     // Now we have the observations in map frame from the point of view of our particle
-     // Let's figure out which landmark in our map is closest to each observation
-     for (const auto & observation : obsTransformed) {
-       double closest_distance = std::numeric_limits<double>::max();
-       const LandmarkObs * closest = nullptr;
-       for (const auto & prediction : predicted) {
-         double distance = dist(observation.x, observation.y, prediction.x, prediction.y);
-         if (distance < closest_distance) {
-           closest_distance = distance;
-           closest = &prediction;
-         }
-       }
-
-       // Used for debugging
-       if (closest != nullptr) {
-#ifdef TRACK_ASSOCIATIONS
-         associations.push_back(closest->id);
-         sense_x.push_back(observation.x);
-         sense_y.push_back(observation.y);
-#endif
-
-         // Now that we know which landmark is closest to each observation, let's multiply
-         // all of the probabilities together to get our final probability
-         prob *= gaussian2D(observation.x, observation.y, closest->x, closest->y, std_landmark[0], std_landmark[1]);
-       }
-     }
-     // If we had no observations, clear our prob estimate
-     if (obsTransformed.size() == 0 || predicted.size() == 0) {
-       prob = p.weight;
-       std::cout << "No observations or predictions!" << std::endl;
-     }
-     p.weight = prob;
-     weight_sum += p.weight;
-#ifdef TRACK_ASSOCIATIONS
-     SetAssociations(p, associations, sense_x, sense_y);
-#endif
-
-   }
-
-   // printStatistics();
-
-   // Normalize the weights
-   if (weight_sum != 0.0) {
-     for (auto & p : particles) {
-       p.weight = p.weight / weight_sum;
-     }
-   } else {
-     std::cout << "Weights sum to zero! Resetting weights..." << std::endl;
-     for (auto & p : particles) {
-       p.weight = 1.0;
-     }
-   }
+    // Now that we have our predictions, lets take a pass over our observations
+    // and find the closest prediction to each observation, and then use that to update the weight
+    double prob = 1.0;
+    for (const auto & observation : observations) {
+      // First we need to transform the observation from vehicle to map coordinate frame
+      LandmarkObs obsTransformed = transformObservation(p, observation);
+      double closest_distance = std::numeric_limits<double>::max();
+      const LandmarkObs * closest_prediction = nullptr;
+      for (const auto & prediction : predicted) {
+        double distance = dist(obsTransformed.x, obsTransformed.y, prediction.x, prediction.y);
+        if (distance < closest_distance) {
+          closest_distance = distance;
+          closest_prediction = &prediction;
+        }
+      }
+      if (closest_prediction) {
+        // Now that we know which landmark is closest to each observation, let's multiply
+        // all of the probabilities together to get our final probability
+        prob *= gaussian2D(obsTransformed.x, obsTransformed.y, closest_prediction->x, closest_prediction->y, std_landmark[0], std_landmark[1]);
+      }
+    } // end observations
+    // Now that we've gone through all the observations and updated the weight for this particular hypothesis
+    p.weight = prob;
+    weight_sum += p.weight;
+  }
+  // Now that we've gone through all the particles, let's normalize the weights so that they
+  // sum to one and thus represent a proper probability distribution...
+  if (weight_sum != 0.0) {
+    for (auto & p : particles) {
+      p.weight = p.weight / weight_sum;
+    }
+  } else {
+    std::cout << "Weights sum to zero! Resetting weights..." << std::endl;
+    for (auto & p : particles) {
+      p.weight = 1.0;
+    }
+  }
 }
 
 void ParticleFilter::resample() {
