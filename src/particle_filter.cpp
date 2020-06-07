@@ -87,12 +87,13 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
         }
       }
       if (closest_prediction) {
-        // Now that we know which landmark is closest to each observation, let's multiply
-        // all of the probabilities together to get our final probability
+        // For each of the prediction <-> observation pairs, let's calculate the probability based on a multivariate gaussian
+        // and then multiply them all together to yield a final, total probability.
         prob *= gaussian2D(obsTransformed.x, obsTransformed.y, closest_prediction->x, closest_prediction->y, std_landmark[0], std_landmark[1]);
       }
     } // end observations
     // Now that we've gone through all the observations and updated the weight for this particular hypothesis
+    // let's assign the new weight and keep accumulate the sum for normalization
     p.weight = prob;
     weight_sum += p.weight;
   }
